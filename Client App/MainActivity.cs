@@ -15,12 +15,18 @@ using System.Threading.Tasks;
 using Android;
 using Android.Content.PM;
 using Android.Support.Design.Widget;
+using System.Net.Sockets;
+using System.Text;
 
 namespace Client_App
 {
     [Activity(Label = "Golf Tracer", Theme = "@style/AppTheme", MainLauncher = true)]
     public class MainActivity : AppCompatActivity
     {
+        //These are for sending data to the server
+        const int TCPPort = 500;
+        const string ServerIPAddress = "127.0.0.1";
+
         TextView GPSLocationLongitude;
         TextView GPSLocationLatitude;
 
@@ -34,12 +40,35 @@ namespace Client_App
             Random rand = new Random();
             label.Text = rand.Next(111111, 999999).ToString();
 
+            SendGPSStream();
+            
+        }
+
+        private async void SendGPSStream()
+        {
+            while (true) {
+            UpdateGPS();
+
             GPSLocationLongitude = (TextView)FindViewById(Resource.Id.textView2);
             GPSLocationLatitude = (TextView)FindViewById(Resource.Id.textView3);
 
-            UpdateGPS();
-            
+            string GPSConactinatedData = GPSLocationLongitude.ToString() + "," + GPSLocationLatitude.ToString();
+            TcpClient client = new TcpClient(ServerIPAddress, TCPPort);
+            NetworkStream NetworkStream = client.GetStream();
+            byte[] bytesToSend = ASCIIEncoding.ASCII.GetBytes(GPSConactinatedData);
+
+            Console.WriteLine("Sending Current GPS : " + GPSConactinatedData);
+            NetworkStream.Write(bytesToSend, 0, bytesToSend.Length);
+
+            byte[] bytesToRead = new byte[client.ReceiveBufferSize];
+            int bytesRead = NetworkStream.Read(bytesToRead, 0, client.ReceiveBufferSize);
+            Console.WriteLine("Received : " + Encoding.ASCII.GetString(bytesToRead, 0, bytesRead));
+            Console.ReadLine();
+            client.Close();
+                System.Threading.Thread.Sleep(10000);
+            }
         }
+
         private async void UpdateGPS()
         {
             await TryToGetPermissions();
